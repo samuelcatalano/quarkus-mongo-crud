@@ -1,10 +1,12 @@
 package com.mongo.crud.example.service;
 
+import io.quarkus.panache.common.exception.PanacheQueryException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import com.mongo.crud.example.domain.Category;
+import com.mongo.crud.example.dto.CategoryDTO;
 import com.mongo.crud.example.exception.BusinessException;
 import com.mongo.crud.example.repository.CategoryRepository;
 
@@ -33,14 +35,16 @@ public class CategoryService {
 
   /**
    * Saves a category.
-   * @param category The category to be saved.
+   * @param dto The category to be saved.
    * @return The saved category.
    * @throws BusinessException If an error occurs during the save process.
    */
-  public Category save(final Category category) throws BusinessException {
+  public CategoryDTO save(final CategoryDTO dto) throws BusinessException {
     try {
-      return categoryRepository.persistCollection(category);
-    } catch (final Exception e) {
+      final Category category = new Category(dto);
+      categoryRepository.persistCollection(category);
+      return dto;
+    } catch (final PanacheQueryException e) {
       log.error("Error persisting category! {}", e.getMessage(), e);
       throw new BusinessException("Error persisting category! ", e);
     }
@@ -49,16 +53,18 @@ public class CategoryService {
   /**
    * Updates a category with the specified ID.
    * @param id       The ID of the category to update.
-   * @param category The updated category.
+   * @param dto      The updated category.
    * @return The updated category.
    * @throws BusinessException If an error occurs during the update process.
    */
-  public Category update(final ObjectId id, final Category category) throws BusinessException {
+  public CategoryDTO update(final ObjectId id, final CategoryDTO dto) throws BusinessException {
     Objects.requireNonNull(id, "id must not be null");
-    Objects.requireNonNull(category, "Category entity must not be null");
+    Objects.requireNonNull(dto, "Category entity must not be null");
 
     try {
-      return categoryRepository.updateCollection(id, category);
+      final Category category = new Category(dto);
+      categoryRepository.updateCollection(id, category);
+      return dto;
     } catch (final Exception e) {
       log.error("Error updating category! {}", e.getMessage(), e);
       throw new BusinessException("Error updating category! ", e);
@@ -70,21 +76,23 @@ public class CategoryService {
    * @param title The title of the category to find.
    * @return The found category or null if not found.
    */
-  public Category findCategoryByTitle(final String title) {
+  public CategoryDTO findCategoryByTitle(final String title) {
     if (title == null || title.isEmpty()) {
       throw new IllegalArgumentException("Title cannot be null or empty");
     }
-    return categoryRepository.findCollectionByName(title);
+    final Category category = categoryRepository.findCollectionByName(title);
+    return new CategoryDTO(category.getTitle(), category.getDescription(), category.getOwnerId());
   }
 
   /**
    * Retrieves all categories.
    * @return List of all categories.
    */
-  public List<Category> getAllCategories() throws BusinessException {
+  public List<CategoryDTO> getAllCategories() throws BusinessException {
     try {
-      return categoryRepository.findAllCollections();
-    } catch (final Exception e) {
+      return categoryRepository.findAllCollections().stream()
+            .map(c -> new CategoryDTO(c.getTitle(), c.getDescription(), c.getOwnerId())).toList();
+    } catch (final PanacheQueryException e) {
       log.error("Error retrieving all categories! {}", e.getMessage(), e);
       throw new BusinessException("Error retrieving all categories! ", e);
     }
@@ -96,11 +104,13 @@ public class CategoryService {
    * @throws BusinessException If an error occurs during the deletion process.
    */
   public void deleteById(final ObjectId id) throws BusinessException {
-    Objects.requireNonNull(id, "id must not be null");
+    if (id == null || id.toString().isEmpty()) {
+      throw new IllegalArgumentException("Id cannot be null or empty");
+    }
 
     try {
       categoryRepository.deleteCollectionById(id);
-    } catch (final Exception e) {
+    } catch (final PanacheQueryException e) {
       log.error("Error deleting category by id! {}", e.getMessage(), e);
       throw new BusinessException("Error deleting category by id! ", e);
     }

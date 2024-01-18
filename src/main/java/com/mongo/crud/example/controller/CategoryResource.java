@@ -1,9 +1,12 @@
 package com.mongo.crud.example.controller;
 
+import io.netty.handler.codec.http.HttpResponseStatus;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HttpMethod;
+import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -12,8 +15,10 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 
 import com.mongo.crud.example.domain.Category;
+import com.mongo.crud.example.dto.CategoryDTO;
 import com.mongo.crud.example.exception.BusinessException;
 import com.mongo.crud.example.service.CategoryService;
 
@@ -25,6 +30,7 @@ import java.util.List;
  * JAX-RS resource class for handling category-related operations.
  * This class defines RESTful endpoints for managing categories.
  */
+@Slf4j
 @Path("/api/category")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -45,11 +51,17 @@ public class CategoryResource {
    * POST method to save a new category.
    * @param category The Category object to be saved.
    * @return The saved Category object.
-   * @throws BusinessException if there is an issue saving the category.
+   * @throws InternalServerErrorException if there is an issue saving the category.
    */
   @POST
-  public Category saveCategory(final Category category) throws BusinessException {
-    return categoryService.save(category);
+  public Response saveCategory(final CategoryDTO category) throws InternalServerErrorException {
+    try {
+      var result = categoryService.save(category);
+      return Response.ok(result).build();
+    } catch (final BusinessException e) {
+      log.error("Error saving category: {}", e.getMessage(), e);
+      throw new InternalServerErrorException(e.getMessage(), e);
+    }
   }
 
   /**
@@ -61,8 +73,14 @@ public class CategoryResource {
    */
   @Path("{id}")
   @PUT
-  public Category updateCategory(@PathParam("id") final ObjectId id, final Category category) throws BusinessException {
-    return categoryService.update(id, category);
+  public Response updateCategory(@PathParam("id") final ObjectId id, final CategoryDTO category) throws BusinessException {
+    try {
+      var result = categoryService.update(id, category);
+      return Response.ok(result).build();
+    } catch (final BusinessException e) {
+      log.error("Error updating category: {}", e.getMessage(), e);
+      throw new InternalServerErrorException(e.getMessage(), e);
+    }
   }
 
   /**
@@ -73,8 +91,8 @@ public class CategoryResource {
   @GET
   @Path("/{title}")
   public Response getCategoryByTitle(@PathParam("title") final String title) {
-    final Category foundCategory = categoryService.findCategoryByTitle(title);
-    if (foundCategory.getTitle() == null) {
+    final CategoryDTO foundCategory = categoryService.findCategoryByTitle(title);
+    if (foundCategory.title() == null) {
       return Response.noContent().build();
     }
     return Response.ok(foundCategory).build();
@@ -86,7 +104,7 @@ public class CategoryResource {
    */
   @GET
   public Response getAllCategories() throws BusinessException {
-    final List<Category> foundCategories;
+    final List<CategoryDTO> foundCategories;
     try {
       foundCategories = categoryService.getAllCategories();
       return Response.ok(foundCategories).build();

@@ -1,16 +1,13 @@
 package com.mongo.crud.example.repository.base;
 
+import io.quarkus.mongodb.panache.PanacheMongoEntity;
 import io.quarkus.panache.common.exception.PanacheQueryException;
-
-import com.mongo.crud.example.domain.Category;
-import com.mongo.crud.example.domain.base.BaseEntity;
-import com.mongo.crud.example.exception.CollectionNotFoundException;
 
 import org.bson.types.ObjectId;
 
 import java.util.List;
 
-public interface RepositoryCRUDInterface<E extends BaseEntity> {
+public interface RepositoryCRUDInterface<E extends PanacheMongoEntity> {
 
   E persistCollection(E entity) throws PanacheQueryException;
 

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
 import com.mongo.crud.example.domain.Category;
+import com.mongo.crud.example.exception.CategoryNotFoundException;
 import com.mongo.crud.example.repository.base.RepositoryCRUDInterface;
 import com.mongo.crud.example.util.ObjectUtils;
 
@@ -51,9 +52,8 @@ public class CategoryRepository implements PanacheMongoRepository<Category>, Rep
   public Category updateCollection(final ObjectId id, final Category entity) throws PanacheQueryException {
     try {
       final var category = findByIdOptional(id)
-          .orElseThrow(() -> new PanacheQueryException("Collection was not found for this category id"));
+           .orElseThrow(() -> new CategoryNotFoundException("Category was not found for this id"));
       ObjectUtils.copyNonNullOrEmptyPropertiesFrom(entity, category);
-      category.setId(id);
       persistOrUpdate(category);
       return category;
     } catch (final Exception e) {
@@ -69,8 +69,7 @@ public class CategoryRepository implements PanacheMongoRepository<Category>, Rep
    */
   @Override
   public Category findCollectionByName(final String name) {
-    return (Category) Optional.ofNullable(find("title", name).firstResult())
-        .orElse(new Category());
+    return (Category) Optional.ofNullable(find("title", name).firstResult()).orElse(new Category());
   }
 
   /**
